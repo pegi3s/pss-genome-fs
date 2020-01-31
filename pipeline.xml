@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<pipeline xmlns="http://www.sing-group.org/compi/pipeline-1.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<version>1.0.0</version>
+
+	<params>
+		<param name="host_working_dir" shortName="hw" global="true">Path of the working directory in the host.</param>
+		<param name="working_dir" shortName="w" global="true" defaultValue="/working_dir">Path of the working directory.</param>
+		<param name="temporary_dir" shortName="td" global="true" defaultValue="temporary">Path of the temporary directory (relative to the working directory) where intermediate results files are generated.</param>
+		<flag name="keep_temporary_dir" shortName="ktd" global="true">Use this flag to indicate that the intermediate results files in the temporary directory must not be removed. These files are removed only in the "after-remove-stop-codons" and "orthologs-reference-species" tasks.</flag>
+		<param name="input_data_dir" shortName="id">Path of the input data directory (relative to the working directory).</param>
+		<param name="reference_file" shortName="rf">Name of the reference genome file (i.e. the name of a file in the input_data_dir).</param>
+		<param name="global_reference_file" shortName="grf" defaultValue="">Optionally, the path of the global reference file (relative to the working directory). When this file is provided, the tasks "orthologs-reference-species" is executed.</param>
+		<param name="blast_type" shortName="bt">BLAST type to use when finding orthologs.</param>
+		<param name="compi_num_tasks" shortName="cnt" defaultValue="6" global="true">Maximum number of tasks that can be run in parallel when running other Compi pipelines such as pss-fs or two-way-blast.</param>
+
+		<param name="version_two_way_blast" shortName="vtwb" defaultValue="1.0.0" global="true">Version of the pegi3s/two-way-blast to use.</param>
+		<param name="version_emboss" shortName="ve" defaultValue="6.6.0" global="true">Version of the pegi3s/emboss to use.</param>
+		<param name="version_utilities" shortName="vu" defaultValue="0.8.0" global="true">Version of the pegi3s/utilities to use.</param>
+		<param name="version_seqkit" shortName="vs" defaultValue="0.11.0" global="true">Version of the pegi3s/seqkit to use.</param>
+		<param name="version_blast_utilities" shortName="vbu" defaultValue="0.1.0" global="true">Version of the pegi3s/seqkit to use.</param>
+		<param name="version_pss_fs" shortName="vfs" defaultValue="1.1.0" global="true">Version of the pegi3s/seqkit to use.</param>
+	</params>
+	<tasks>
+		<task id="pull-docker-images">
+			docker pull pegi3s/two-way-blast:${version_two_way_blast}
+			docker pull pegi3s/emboss:${version_emboss}
+			docker pull pegi3s/utilities:${version_utilities}
+			docker pull pegi3s/seqkit:${version_seqkit}
+			docker pull pegi3s/blast_utilities:${version_blast_utilities}
+			docker pull pegi3s/pss-fs:${version_pss_fs}
+        </task>
+		<task id="prepare-input-files" params="input_data_dir">
+			mkdir -p ${working_dir}/${temporary_dir}/input
+			cp ${working_dir}/${input_data_dir}/* ${working_dir}/${temporary_dir}/input
+			cd ${working_dir}/${temporary_dir}/input
+			sed -i "s/.>/_/g" *
+			sed -i "s/[^a-zA-Z0-9>]/_/g" *
+			while grep "__" ${working_dir}/${temporary_dir}/input/* > ${working_dir}/${temporary_dir}/dum
+			do
+				sed -i "s/__/_/g" *
+			done
+			rm ${working_dir}/${temporary_dir}/dum
+		</task>
+		<task id="identify-orthologs" after="prepare-input-files pull-docker-images" params="reference_file blast_type">
+            docker run --rm -v /tmp:/tmp -v /var/run/docker.sock:/var/run/docker.sock -v ${host_working_dir}/${temporary_dir}/input:/input -v ${host_working_dir}/${temporary_dir}/orthologs:/output pegi3s/two-way-blast:${version_two_way_blast} --num-tasks ${compi_num_tasks} -- --reference_file ${reference_file} --blast_type ${blast_type}
+		</task>
+		<task id="translate-reference" after="identify-orthologs" params="reference_file">
+			docker run --rm -v ${host_working_dir}:/data pegi3s/emboss:${version_emboss} transeq -sequence /data/${temporary_dir}/input/${reference_file} -outseq /data/${temporary_dir}/translated_ref -trim
+            docker run --rm -v ${host_working_dir}:/data pegi3s/utilities:${version_utilities} fasta_remove_line_breaks /data/${temporary_dir}/translated_ref
+		</task>
+		<task id="split-translated-reference" after="translate-reference">
+			rm -rf ${working_dir}/${temporary_dir}/translated_ref.split
+			docker run --rm -v ${host_working_dir}:/data pegi3s/seqkit:${version_seqkit} split --by-size 1 /data/${temporary_dir}/translated_ref
+		</task>
+		<foreach id="check-m3f1" after="split-translated-reference"
+		   of="file" in="${working_dir}/${temporary_dir}/translated_ref.split" as="protein_ref">
+			FILENAME=$(basename -- "${protein_ref}")
+			HEADER=$(head -1 ${protein_ref})
+			NAME=$(echo "$HEADER" | sed 's/>//g' | sed "s/_1$//g")
+			echo -e "${protein_ref} \t $FILENAME \t $NAME \t ${working_dir}/${temporary_dir}/orthologs/${NAME}.orthologs"
+			echo ${HEADER}
+
+			if [ -f "${working_dir}/${temporary_dir}/orthologs/${NAME}.orthologs" ]; then
+				docker run --rm -v ${host_working_dir}:/data pegi3s/blast_utilities:${version_blast_utilities} m3f1 /data/${temporary_dir}/orthologs/${NAME}.orthologs /data/${temporary_dir}/translated_ref.split/${FILENAME} /data/${temporary_dir}/orthologs/${NAME}.result
+				echo "${NAME}" >> ${working_dir}/${temporary_dir}/translated_ref_done
+			else
+				echo "${NAME} does not have an orthologs file"
+				echo "${NAME}" >> ${working_dir}/${temporary_dir}/translated_ref_without_orthologs_file
+			fi
+		</foreach>
+		<foreach id="filter-sequences" after="check-m3f1"
+		   of="command" in="ls ${working_dir}/${temporary_dir}/orthologs/*.result" as="orthologs_file">
+			mkdir -p ${working_dir}/${temporary_dir}/orthologs_clean
+
+			FILENAME=$(basename -- "${orthologs_file}")
+
+			docker run --rm -v /tmp:/tmp -v /var/run/docker.sock:/var/run/docker.sock -v ${host_working_dir}:${host_working_dir} pegi3s/utilities:${version_utilities} fasta_remove_sequences_with_in_frame_stops_or_n ${host_working_dir}/${temporary_dir}/orthologs/${FILENAME} ${host_working_dir}/${temporary_dir}/orthologs_clean/${FILENAME}
+		</foreach>
+		<task id="remove-stop-codons" after="filter-sequences">
+			docker run --rm -v ${host_working_dir}:/data pegi3s/utilities:${version_utilities} bash -c "batch_fasta_remove_stop_codons /data/${temporary_dir}/orthologs_clean/*"
+		</task>
+		<task id="after-remove-stop-codons" after="remove-stop-codons">
+			mkdir -p ${working_dir}/orthologs
+			cp ${working_dir}/${temporary_dir}/orthologs_clean/*.result ${working_dir}/orthologs
+			find ${working_dir}/orthologs -type f -empty -delete
+			if [ -z "${keep_temporary_dir}" ]
+			then
+				rm -rf ${working_dir}/${temporary_dir}/*
+			fi	
+		</task>
+		<task id="fast-screen" after="after-remove-stop-codons">
+		<![CDATA[
+			mkdir -p ${working_dir}/fast-screen/input
+			
+			if [ -d ${working_dir}/files_to_re_run ]
+			then 
+				cp ${working_dir}/files_to_re_run/* ${working_dir}/fast-screen/input
+				sed -i 's/-//g' ${working_dir}/fast-screen/input/*
+				docker run --rm -v ${host_working_dir}:${host_working_dir} pegi3s/utilities:${version_utilities} backup_file ${host_working_dir}/fast-screen/files_requiring_attention
+			else 
+				cp ${working_dir}/orthologs/* ${working_dir}/fast-screen/input
+			fi
+
+			mkdir -p ${working_dir}/fast-screen/logs
+			docker run --rm -v ${host_working_dir}/fast-screen/:/working_dir --rm pegi3s/pss-fs:${version_pss_fs} --logs /working_dir/logs --num-tasks ${compi_num_tasks}
+			rm -r ${working_dir}/fast-screen/input
+            
+			#
+			# Copy the files list in the fast-screen/files_requiring_attention file
+			# to a files_to_re_run folder
+			#
+
+			rm -rf ${working_dir}/files_to_re_run
+			mkdir ${working_dir}/files_to_re_run
+
+			while read file
+			do
+				cp ${working_dir}/fast-screen/ali/$file ${working_dir}/files_to_re_run/$file
+			done < ${working_dir}/fast-screen/files_requiring_attention
+				
+			RERUN=$(find ${working_dir}/files_to_re_run/ -type f)
+			if [ -z "${RERUN}" ]
+			then 
+				rmdir ${working_dir}/files_to_re_run
+			fi
+		]]></task>
+		<task id="get-short-list-files" after="fast-screen">
+		<![CDATA[
+			rm -rf ${working_dir}/short_list_dir
+			mkdir -p ${working_dir}/short_list_dir
+			while read file
+			do
+			cp ${working_dir}/orthologs/$file ${working_dir}/short_list_dir/$file
+			done < ${working_dir}/fast-screen/short_list
+		]]></task>
+		<task id="orthologs-reference-species" after="get-short-list-files"
+			params="input_data_dir reference_file global_reference_file blast_type"
+			if="test ! -z ${global_reference_file}"
+		>
+		<![CDATA[
+			rm -rf ${working_dir}/${temporary_dir}/orthologs_ref_species
+			rm -f ${working_dir}/orthologous_gene_short_list
+			rm -f ${working_dir}/orthologous_codeML_short_list
+			rm -f ${working_dir}/orthologous_FUBAR_short_list
+			rm -f ${working_dir}/orthologous_gene_list
+
+			INPUT_GLOBAL_DIR=${working_dir}/${temporary_dir}/orthologs_ref_species/input_global
+			mkdir -p ${INPUT_GLOBAL_DIR}	
+			cd ${INPUT_GLOBAL_DIR}
+
+			cp ${working_dir}/${input_data_dir}/${reference_file} ./
+			cp ${working_dir}/${global_reference_file} ./
+			
+			sed -i "s/.>/_/g" *
+			sed -i "s/[^a-zA-Z0-9>]/_/g" *
+
+			while grep "__" ${INPUT_GLOBAL_DIR}/* > ${working_dir}/${temporary_dir}/orthologs_ref_species/dum
+			do
+				sed -i "s/__/_/g" *
+			done
+
+			docker run --rm -v /tmp:/tmp -v /var/run/docker.sock:/var/run/docker.sock -v ${host_working_dir}/${temporary_dir}/orthologs_ref_species/input_global:/input -v ${host_working_dir}/${temporary_dir}/orthologs_ref_species/orthologs:/output pegi3s/two-way-blast:${version_two_way_blast} --num-tasks ${compi_num_tasks} -- --reference_file ${reference_file} --blast_type ${blast_type}
+
+			cd ${working_dir}/${temporary_dir}/orthologs_ref_species/orthologs
+
+			for file in *.orthologs
+			do
+				grep ">" $file > temp1
+				tr "\n" "\t" < temp1 >> temp2
+				echo "" >> temp2
+			done
+
+			sed -i 's/>//g' temp2
+
+			cp ${working_dir}/fast-screen/short_list ./
+			cp ${working_dir}/fast-screen/codeML_short_list ./
+			cp ${working_dir}/fast-screen/FUBAR_short_list ./
+
+			sed -i 's/\.result//g' short_list
+			sed -i 's/\.result//g' codeML_short_list
+			sed -i 's/\.result//g' FUBAR_short_list
+
+			while read list
+			do
+				grep "$list" temp2 >> ${working_dir}/orthologous_gene_short_list
+			done < short_list
+
+			while read list
+			do
+				grep "$list" temp2 >> ${working_dir}/orthologous_codeML_short_list
+			done < codeML_short_list
+
+			while read list
+			do
+				grep "$list" temp2 >>${working_dir}/orthologous_FUBAR_short_list
+			done < FUBAR_short_list
+
+			mv temp2 ${working_dir}/orthologous_gene_list
+
+			if [ -z "${keep_temporary_dir}" ]
+			then
+				rm -rf ${working_dir}/${temporary_dir}/*
+			fi
+		]]></task>
+	</tasks>
+	<metadata>
+		<task-description id="prepare-input-files">Removes non-alphanumeric characters (with the exception of “>” at the beginning of a line) from sequence headers of the input files.</task-description>
+		<task-description id="pull-docker-images">Pulls the necessary Docker images from the pegi3s/dockerfiles project.</task-description>
+		<task-description id="identify-orthologs">Orthologous gene identification using the pegi3s/two-way-blast Compi-based Docker image. This task creates the orthologs datasets</task-description>
+		<task-description id="translate-reference">Translates the reference sequence using the pegi3s/emboss Docker image.</task-description>
+		<task-description id="split-translated-reference">Split the translated reference to create one FASTA file for each sequence.</task-description>
+		<task-description id="check-m3f1">For each sequence of each orthologs dataset, finds the correct frame and make sequences multiple of three, using the “m3f1” script pegi3s/blast_utilities Docker image.</task-description>
+		<task-description id="filter-sequences">Filters each orthologs dataset to remove sequences contain-ing in-frame stop codons or N’s using the “fas-ta_remove_sequences_with_in_frame_stops_or_n” script of the pegi3s/utilities Docker image.</task-description>
+		<task-description id="remove-stop-codons">Processes each one of the previous files to remove stop codons using the “batch_fasta_remove_stop_codons” script of the pegi3s/utilities Docker image.</task-description>
+		<task-description id="after-remove-stop-codons">Moves the files created in the previous step into a new location to be taken by the next step and removes the intermediate results files generated so far.</task-description>
+		<task-description id="fast-screen">Runs the FastScreen image (pegi3s/pss-fs) using as input each one of the orthologs datasets.</task-description>
+		<task-description id="get-short-list-files">Copy the sequence files listed in the FastScreen short list (those that should be the subject of detailed analyses) into the “short_list_dir” directory.</task-description>
+		<task-description id="orthologs-reference-species">For every gene list that is produced by FastScreen, performs the identification of orthologous genes in an external reference species (allowing cross-species comparisons), using the pegi3s/two-way-blast Compi-based Docker image.</task-description>
+	</metadata>
+</pipeline>
