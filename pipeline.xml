@@ -206,17 +206,17 @@
 		]]></task>
 	</tasks>
 	<metadata>
-		<task-description id="prepare-input-files">Removes non-alphanumeric characters (with the exception of “>” at the beginning of a line) from sequence headers of the input files.</task-description>
+		<task-description id="prepare-input-files">Removes non-alphanumeric characters (with the exception of ">" at the beginning of a line) from sequence headers of the input files.</task-description>
 		<task-description id="pull-docker-images">Pulls the necessary Docker images from the pegi3s/dockerfiles project.</task-description>
 		<task-description id="identify-orthologs">Orthologous gene identification using the pegi3s/two-way-blast Compi-based Docker image. This task creates the orthologs datasets</task-description>
 		<task-description id="translate-reference">Translates the reference sequence using the pegi3s/emboss Docker image.</task-description>
 		<task-description id="split-translated-reference">Split the translated reference to create one FASTA file for each sequence.</task-description>
-		<task-description id="check-m3f1">For each sequence of each orthologs dataset, finds the correct frame and make sequences multiple of three, using the “m3f1” script pegi3s/blast_utilities Docker image.</task-description>
-		<task-description id="filter-sequences">Filters each orthologs dataset to remove sequences contain-ing in-frame stop codons or N’s using the “fas-ta_remove_sequences_with_in_frame_stops_or_n” script of the pegi3s/utilities Docker image.</task-description>
-		<task-description id="remove-stop-codons">Processes each one of the previous files to remove stop codons using the “batch_fasta_remove_stop_codons” script of the pegi3s/utilities Docker image.</task-description>
+		<task-description id="check-m3f1">For each sequence of each orthologs dataset, finds the correct frame and make sequences multiple of three, using the "m3f1" script pegi3s/blast_utilities Docker image.</task-description>
+		<task-description id="filter-sequences">Filters each orthologs dataset to remove sequences containing in-frame stop codons or N’s using the "fasta_remove_sequences_with_in_frame_stops_or_n" script of the pegi3s/utilities Docker image.</task-description>
+		<task-description id="remove-stop-codons">Processes each one of the previous files to remove stop codons using the "batch_fasta_remove_stop_codons" script of the pegi3s/utilities Docker image.</task-description>
 		<task-description id="after-remove-stop-codons">Moves the files created in the previous step into a new location to be taken by the next step and removes the intermediate results files generated so far.</task-description>
 		<task-description id="fast-screen">Runs the FastScreen image (pegi3s/pss-fs) using as input each one of the orthologs datasets.</task-description>
-		<task-description id="get-short-list-files">Copy the sequence files listed in the FastScreen short list (those that should be the subject of detailed analyses) into the “short_list_dir” directory.</task-description>
+		<task-description id="get-short-list-files">Copy the sequence files listed in the FastScreen short list (those that should be the subject of detailed analyses) into the "short_list_dir" directory.</task-description>
 		<task-description id="orthologs-reference-species">For every gene list that is produced by FastScreen, performs the identification of orthologous genes in an external reference species (allowing cross-species comparisons), using the pegi3s/two-way-blast Compi-based Docker image.</task-description>
 	</metadata>
 </pipeline>

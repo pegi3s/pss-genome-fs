@@ -88,7 +88,7 @@ To re-analyze them, you should first fix the problems and put the updated FASTA 
 docker run --rm -v /tmp:/tmp -v /var/run/docker.sock:/var/run/docker.sock -v ${WORKING_DIR}:/working_dir --rm pegi3s/pss-genome-fs --logs /working_dir/logs --params /working_dir/pss-genome-fs.params --num-tasks ${COMPI_NUM_TASKS} --single-task fast-screen -- --host_working_dir ${WORKING_DIR} --compi_num_tasks ${COMPI_NUM_TASKS}
 ```
 
-This command simply introduces the `--single-task fast-screen` parameter to ask Compi to only run this step. When this step finishes, the new results will be added to the existing ones in the `/fast-screen` and, like before, the `/files_to_re_run` directory will contain the FASTA files that could not be analzyed in these new run.
+This command simply introduces the `--single-task fast-screen` parameter to ask Compi to only run this step. When this step finishes, the new results will be added to the existing ones in the `/fast-screen` and, like before, the `/files_to_re_run` directory will contain the FASTA files that could not be analzyed in this new run.
 
 Once you are done analyzing the problematic files, you can re-run the final two steps of the pipeline to copy the FASTA files that likely show evidence for PSS and to re-generate the orthologous gene lists. To do this, you should execute the following command:
 
