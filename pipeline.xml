@@ -2,7 +2,7 @@
 
 <pipeline xmlns="http://www.sing-group.org/compi/pipeline-1.0"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-	<version>1.1.0</version>
+	<version>1.2.0</version>
 
 	<params>
 		<param name="host_working_dir" shortName="hw" global="true">Path of the working directory in the host.</param>
@@ -20,7 +20,7 @@
 		<param name="version_utilities" shortName="vu" defaultValue="0.8.0" global="true">Version of the pegi3s/utilities to use.</param>
 		<param name="version_seqkit" shortName="vs" defaultValue="0.11.0" global="true">Version of the pegi3s/seqkit to use.</param>
 		<param name="version_blast_utilities" shortName="vbu" defaultValue="0.1.0" global="true">Version of the pegi3s/blast_utilities to use.</param>
-		<param name="version_pss_fs" shortName="vfs" defaultValue="1.1.0" global="true">Version of the pegi3s/pss-fs to use.</param>
+		<param name="version_pss_fs" shortName="vfs" defaultValue="1.3.0" global="true">Version of the pegi3s/pss-fs to use.</param>
 	</params>
 	<tasks>
 		<task id="pull-docker-images">
