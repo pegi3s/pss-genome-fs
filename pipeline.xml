@@ -2,7 +2,7 @@
 
 <pipeline xmlns="http://www.sing-group.org/compi/pipeline-1.0"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-	<version>1.3.0</version>
+	<version>1.4.0</version>
 
 	<params>
 		<param name="host_working_dir" shortName="hw" global="true">Path of the working directory in the host.</param>
@@ -17,7 +17,7 @@
 
 		<param name="version_two_way_blast" shortName="vtwb" defaultValue="1.1.1" global="true">Version of the pegi3s/two-way-blast to use.</param>
 		<param name="version_emboss" shortName="ve" defaultValue="6.6.0" global="true">Version of the pegi3s/emboss to use.</param>
-		<param name="version_utilities" shortName="vu" defaultValue="0.8.0" global="true">Version of the pegi3s/utilities to use.</param>
+		<param name="version_utilities" shortName="vu" defaultValue="0.11.0" global="true">Version of the pegi3s/utilities to use.</param>
 		<param name="version_seqkit" shortName="vs" defaultValue="0.11.0" global="true">Version of the pegi3s/seqkit to use.</param>
 		<param name="version_blast_utilities" shortName="vbu" defaultValue="0.1.0" global="true">Version of the pegi3s/blast_utilities to use.</param>
 		<param name="version_pss_fs" shortName="vfs" defaultValue="1.4.0" global="true">Version of the pegi3s/pss-fs to use.</param>
@@ -76,7 +76,7 @@
 
 			FILENAME=$(basename -- "${orthologs_file}")
 
-			docker run --rm -v /tmp:/tmp -v /var/run/docker.sock:/var/run/docker.sock -v ${host_working_dir}:${host_working_dir} pegi3s/utilities:${version_utilities} fasta_remove_sequences_with_in_frame_stops_or_n ${host_working_dir}/${temporary_dir}/orthologs/${FILENAME} ${host_working_dir}/${temporary_dir}/orthologs_clean/${FILENAME}
+			docker run --rm -v /tmp:/tmp -v /var/run/docker.sock:/var/run/docker.sock -v ${host_working_dir}:${host_working_dir} --env VERSION_SEQKIT=${version_seqkit} --env VERSION_PEGI3S_UTILITIES=${version_utilities} --env VERSION_EMBOSS=${version_emboss} pegi3s/utilities:${version_utilities} fasta_remove_sequences_with_in_frame_stops_or_n ${host_working_dir}/${temporary_dir}/orthologs/${FILENAME} ${host_working_dir}/${temporary_dir}/orthologs_clean/${FILENAME}
 		</foreach>
 		<task id="remove-stop-codons" after="filter-sequences">
 			docker run --rm -v ${host_working_dir}:/data pegi3s/utilities:${version_utilities} bash -c "batch_fasta_remove_stop_codons /data/${temporary_dir}/orthologs_clean/*"
