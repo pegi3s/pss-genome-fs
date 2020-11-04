@@ -2,7 +2,7 @@
 
 <pipeline xmlns="http://www.sing-group.org/compi/pipeline-1.0"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-	<version>1.4.0</version>
+	<version>1.5.0</version>
 
 	<params>
 		<param name="host_working_dir" shortName="hw" global="true">Path of the working directory in the host.</param>
@@ -20,7 +20,7 @@
 		<param name="version_utilities" shortName="vu" defaultValue="0.11.0" global="true">Version of the pegi3s/utilities to use.</param>
 		<param name="version_seqkit" shortName="vs" defaultValue="0.11.0" global="true">Version of the pegi3s/seqkit to use.</param>
 		<param name="version_blast_utilities" shortName="vbu" defaultValue="0.1.0" global="true">Version of the pegi3s/blast_utilities to use.</param>
-		<param name="version_pss_fs" shortName="vfs" defaultValue="1.4.0" global="true">Version of the pegi3s/pss-fs to use.</param>
+		<param name="version_pss_fs" shortName="vfs" defaultValue="1.5.0" global="true">Version of the pegi3s/pss-fs to use.</param>
 	</params>
 	<tasks>
 		<task id="pull-docker-images">
@@ -99,8 +99,14 @@
 				cp ${working_dir}/files_to_re_run/* ${working_dir}/fast-screen/input
 				sed -i 's/-//g' ${working_dir}/fast-screen/input/*
 				docker run --rm -v ${host_working_dir}:${host_working_dir} pegi3s/utilities:${version_utilities} backup_file ${host_working_dir}/fast-screen/files_requiring_attention
-			else 
-				cp ${working_dir}/orthologs/* ${working_dir}/fast-screen/input
+			else
+				# Copy only FASTA files with at least 4 sequences (the minimum required by FastScreen)
+				for file in $(ls -A ${working_dir}/orthologs); do
+					COUNT_SEQS=$(grep '>' ${working_dir}/orthologs/${file} | wc -l);
+					if [ $COUNT_SEQS -ge 4 ]; then
+						cp ${working_dir}/orthologs/${file} ${working_dir}/fast-screen/input/${file}
+					fi
+				done
 			fi
 
 			mkdir -p ${working_dir}/fast-screen/logs
@@ -132,7 +138,7 @@
 			mkdir -p ${working_dir}/short_list_dir
 			while read file
 			do
-			cp ${working_dir}/orthologs/$file ${working_dir}/short_list_dir/$file
+				cp ${working_dir}/orthologs/$file ${working_dir}/short_list_dir/$file
 			done < ${working_dir}/fast-screen/short_list
 		]]></task>
 		<task id="orthologs-reference-species" after="get-short-list-files"
@@ -201,7 +207,7 @@
 
 			if [ -z "${keep_temporary_dir}" ]
 			then
-				rm -rf ${working_dir}/${temporary_dir}/*
+				rm -rf ${working_dir}/${temporary_dir}
 			fi
 		]]></task>
 	</tasks>
@@ -215,7 +221,7 @@
 		<task-description id="filter-sequences">Filters each orthologs dataset to remove sequences containing in-frame stop codons or N’s using the "fasta_remove_sequences_with_in_frame_stops_or_n" script of the pegi3s/utilities Docker image.</task-description>
 		<task-description id="remove-stop-codons">Processes each one of the previous files to remove stop codons using the "batch_fasta_remove_stop_codons" script of the pegi3s/utilities Docker image.</task-description>
 		<task-description id="after-remove-stop-codons">Moves the files created in the previous step into a new location to be taken by the next step and removes the intermediate results files generated so far.</task-description>
-		<task-description id="fast-screen">Runs the FastScreen image (pegi3s/pss-fs) using as input each one of the orthologs datasets.</task-description>
+		<task-description id="fast-screen">Runs the FastScreen image (pegi3s/pss-fs) using as input each one of the orthologs datasets. Only those files with at least 4 sequences are used to run FastScreen.</task-description>
 		<task-description id="get-short-list-files">Copy the sequence files listed in the FastScreen short list (those that should be the subject of detailed analyses) into the "short_list_dir" directory.</task-description>
 		<task-description id="orthologs-reference-species">For every gene list that is produced by FastScreen, performs the identification of orthologous genes in an external reference species (allowing cross-species comparisons), using the pegi3s/two-way-blast Compi-based Docker image.</task-description>
 	</metadata>
