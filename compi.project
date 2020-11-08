@@ -1,6 +1,6 @@
 #
 #Mon Jan 27 10:18:04 CET 2020
 hub.pipeline.alias=pss-genome-fs
-compi.version=1.3.6
+compi.version=1.3.7
 hub.pipeline.id=5e2eaacce1138700316488c1
 image.name=pegi3s/pss-genome-fs
