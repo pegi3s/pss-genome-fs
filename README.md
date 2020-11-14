@@ -43,15 +43,13 @@ Where:
 - `input_data_dir` is set to `input`, which is the name of the directory that contains the input FASTA files to be analyzed (it is possible to use a different name than `input` as long as it is properly set in the Compi parameters file).
 - `reference_file` is set to `1.fasta`, which is the name input FASTA file to use as reference for finding the orthologous gene sets.
 - `blast_type` is set to the type of BLAST to use for finding the orthologous gene sets (either `blastn` or `tblastx`).
-- `global_reference_file` is set to the location (relative to `the working_dir` directory) of the global reference FASTA file. Note that this file is optional and it can be ommited. When provided, the last task of the pipeline (`orthologs-reference-species`) is executed using it in order to identify the orthologous genes in the short lists produced by FastScreen.
+- `global_reference_file` is set to the location (relative to `the working_dir` directory) of the global reference FASTA file. Note that this file is optional and it can be ommited. When provided, the task `orthologs-reference-species` and `get-orthologs-reference-specie-results` of the pipeline are executed using it in order to identify the orthologous genes in the short lists produced by FastScreen.
 
 Once this structure and files are ready, you should run and adapt the following commands to run the entire pipeline. Here, you only need to set `WORKING_DIR` to the right path in your local file system and `COMPI_NUM_TASKS` to the maximum number of parallel tasks that can be run.
 
 ```bash
 WORKING_DIR=/path/to/pss-genome-fs/working_dir/
 COMPI_NUM_TASKS=8
-
-mkdir -p ${WORKING_DIR}/logs
 
 docker run --rm -v /tmp:/tmp -v /var/run/docker.sock:/var/run/docker.sock -v ${WORKING_DIR}:/working_dir --rm pegi3s/pss-genome-fs --logs /working_dir/logs --params /working_dir/pss-genome-fs.params --num-tasks ${COMPI_NUM_TASKS} -- --host_working_dir ${WORKING_DIR} --compi_num_tasks ${COMPI_NUM_TASKS}
 ```
@@ -80,7 +78,7 @@ Note that the `orthologous_*` lists are only created when the global reference f
 
 # Re-analyzing the files requiring attention
 
-After running the entire pipeline, the `/files_to_re_run` directory contains the FASTA files listed in the `/fast-screen/files_requiring_attention` file. These files could not be analyzed by the FastScreen pipeline  after each execution of the `fast-screen` step, usually because they have in frame stop codons that were introduced during the nucleotide alignment step. 
+After running the entire pipeline, the `/files_to_re_run` directory contains the FASTA files listed in the `/fast-screen/files_requiring_attention` file. These files could not be analyzed by the FastScreen pipeline after each execution of the `fast-screen` step, usually because they have in frame stop codons that were introduced during the nucleotide alignment step. In this case, our [CheckCDS](https://www.sing-group.org/compihub/explore/5f588ccb407682001ad3a1d5#readme) Docker image can help in automatically producing valid CDS files.
 
 To re-analyze them, you should first fix the problems and put the updated FASTA files in the same directory. Then, you should execute only the `fast-screen` step by running the following command:
 
@@ -90,13 +88,15 @@ docker run --rm -v /tmp:/tmp -v /var/run/docker.sock:/var/run/docker.sock -v ${W
 
 This command simply introduces the `--single-task fast-screen` parameter to ask Compi to only run this step. When this step finishes, the new results will be added to the existing ones in the `/fast-screen` and, like before, the `/files_to_re_run` directory will contain the FASTA files that could not be analzyed in this new run.
 
-Once you are done analyzing the problematic files, you can re-run the final two steps of the pipeline to copy the FASTA files that likely show evidence for PSS and to re-generate the orthologous gene lists. To do this, you should execute the following command:
+Once you are done analyzing the problematic files, you can re-run the final two steps of the pipeline to copy the FASTA files that likely show evidence for PSS and to re-generate the orthologous gene lists. To do this, you should execute the following two commands:
 
 ```bash
-docker run --rm -v /tmp:/tmp -v /var/run/docker.sock:/var/run/docker.sock -v ${WORKING_DIR}:/working_dir --rm pegi3s/pss-genome-fs --logs /working_dir/logs --params /working_dir/pss-genome-fs.params --num-tasks ${COMPI_NUM_TASKS} --from get-short-list-files -- --host_working_dir ${WORKING_DIR} --compi_num_tasks ${COMPI_NUM_TASKS}
+docker run --rm -v /tmp:/tmp -v /var/run/docker.sock:/var/run/docker.sock -v ${WORKING_DIR}:/working_dir --rm pegi3s/pss-genome-fs --logs /working_dir/logs --params /working_dir/pss-genome-fs.params --num-tasks ${COMPI_NUM_TASKS} --single-task get-short-list-files -- --host_working_dir ${WORKING_DIR} --compi_num_tasks ${COMPI_NUM_TASKS}
+
+docker run --rm -v /tmp:/tmp -v /var/run/docker.sock:/var/run/docker.sock -v ${WORKING_DIR}:/working_dir --rm pegi3s/pss-genome-fs --logs /working_dir/logs --params /working_dir/pss-genome-fs.params --num-tasks ${COMPI_NUM_TASKS} --single-task get-orthologs-reference-species-results -- --host_working_dir ${WORKING_DIR} --compi_num_tasks ${COMPI_NUM_TASKS}
 ```
 
-This command uses the `--from get-short-list-files` parameter to ask Compi to run this and the subsequent `orthologs-reference-species` step.
+This commands uses `--single-task` parameter to ask Compi to run the `get-short-list-files` and the `get-orthologs-reference-species-results` steps.
 
 # Test data
 
@@ -108,8 +108,6 @@ The sample data is available [here](https://github.com/pegi3s/pss-genome-fs/raw/
 ```bash
 WORKING_DIR=/path/to/pss-genome-fs/working_dir/
 COMPI_NUM_TASKS=8
-
-mkdir -p ${WORKING_DIR}/logs
 
 docker run --rm -v /tmp:/tmp -v /var/run/docker.sock:/var/run/docker.sock -v ${WORKING_DIR}:/working_dir --rm pegi3s/pss-genome-fs --logs /working_dir/logs --params /working_dir/pss-genome-fs.params --num-tasks ${COMPI_NUM_TASKS} -- --host_working_dir ${WORKING_DIR} --keep_temporary_dir --compi_num_tasks ${COMPI_NUM_TASKS}
 ```
