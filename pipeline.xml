@@ -44,15 +44,35 @@
 			rm ${working_dir}/${temporary_dir}/dum
 		</task>
 		<task id="identify-orthologs" after="prepare-input-files pull-docker-images" params="reference_file blast_type">
-			docker run --rm -v /tmp:/tmp -v /var/run/docker.sock:/var/run/docker.sock -v ${host_working_dir}/${temporary_dir}/input:/input -v ${host_working_dir}/${temporary_dir}/orthologs:/output pegi3s/two-way-blast:${version_two_way_blast} --num-tasks ${compi_num_tasks} -- --reference_file ${reference_file} --blast_type ${blast_type}
+			docker run --rm  \
+				-v /tmp:/tmp  \
+				-v /var/run/docker.sock:/var/run/docker.sock  \
+				-v ${host_working_dir}/${temporary_dir}/input:/input  \
+				-v ${host_working_dir}/${temporary_dir}/orthologs:/output  \
+				pegi3s/two-way-blast:${version_two_way_blast}  \
+					--num-tasks ${compi_num_tasks} --  \
+					--reference_file ${reference_file}  \
+					--blast_type ${blast_type}
 		</task>
 		<task id="translate-reference" after="identify-orthologs" params="reference_file">
-			docker run --rm -v ${host_working_dir}:/data pegi3s/emboss:${version_emboss} transeq -sequence /data/${temporary_dir}/input/${reference_file} -outseq /data/${temporary_dir}/translated_ref -trim
-			docker run --rm -v ${host_working_dir}:/data pegi3s/utilities:${version_utilities} fasta_remove_line_breaks /data/${temporary_dir}/translated_ref
+			docker run --rm  \
+				-v ${host_working_dir}:/data \
+				pegi3s/emboss:${version_emboss} transeq \
+					-sequence /data/${temporary_dir}/input/${reference_file} \
+					-outseq /data/${temporary_dir}/translated_ref -trim
+
+			docker run --rm \
+				-v ${host_working_dir}:/data \
+				pegi3s/utilities:${version_utilities} fasta_remove_line_breaks \
+				/data/${temporary_dir}/translated_ref
 		</task>
 		<task id="split-translated-reference" after="translate-reference">
 			rm -rf ${working_dir}/${temporary_dir}/translated_ref.split
-			docker run --rm -v ${host_working_dir}:/data pegi3s/seqkit:${version_seqkit} split --by-size 1 /data/${temporary_dir}/translated_ref
+			docker run --rm \
+				-v ${host_working_dir}:/data \
+				pegi3s/seqkit:${version_seqkit} split \
+					--by-size 1 \
+					/data/${temporary_dir}/translated_ref
 		</task>
 		<foreach id="check-m3f1" after="split-translated-reference"
 			of="file" in="${working_dir}/${temporary_dir}/translated_ref.split" as="protein_ref">
@@ -63,7 +83,13 @@
 			echo ${HEADER}
 
 			if [ -f "${working_dir}/${temporary_dir}/orthologs/${NAME}.orthologs" ]; then
-				docker run --rm -v ${host_working_dir}:/data pegi3s/blast_utilities:${version_blast_utilities} m3f1 /data/${temporary_dir}/orthologs/${NAME}.orthologs /data/${temporary_dir}/translated_ref.split/${FILENAME} /data/${temporary_dir}/orthologs/${NAME}.result
+				docker run --rm \
+					-v ${host_working_dir}:/data \
+					pegi3s/blast_utilities:${version_blast_utilities} m3f1 \
+						/data/${temporary_dir}/orthologs/${NAME}.orthologs \
+						/data/${temporary_dir}/translated_ref.split/${FILENAME} \
+						/data/${temporary_dir}/orthologs/${NAME}.result
+
 				echo "${NAME}" >> ${working_dir}/${temporary_dir}/translated_ref_done
 			else
 				echo "${NAME} does not have an orthologs file"
@@ -76,10 +102,22 @@
 
 			FILENAME=$(basename -- "${orthologs_file}")
 
-			docker run --rm -v /tmp:/tmp -v /var/run/docker.sock:/var/run/docker.sock -v ${host_working_dir}:${host_working_dir} --env VERSION_SEQKIT=${version_seqkit} --env VERSION_PEGI3S_UTILITIES=${version_utilities} --env VERSION_EMBOSS=${version_emboss} pegi3s/utilities:${version_utilities} fasta_remove_sequences_with_in_frame_stops_or_n ${host_working_dir}/${temporary_dir}/orthologs/${FILENAME} ${host_working_dir}/${temporary_dir}/orthologs_clean/${FILENAME}
+			docker run --rm \
+				-v /tmp:/tmp \
+				-v /var/run/docker.sock:/var/run/docker.sock \
+				-v ${host_working_dir}:${host_working_dir} \
+				--env VERSION_SEQKIT=${version_seqkit} \
+				--env VERSION_PEGI3S_UTILITIES=${version_utilities} \
+				--env VERSION_EMBOSS=${version_emboss} \
+				pegi3s/utilities:${version_utilities} fasta_remove_sequences_with_in_frame_stops_or_n \
+					${host_working_dir}/${temporary_dir}/orthologs/${FILENAME} \
+					${host_working_dir}/${temporary_dir}/orthologs_clean/${FILENAME}
 		</foreach>
 		<task id="remove-stop-codons" after="filter-sequences">
-			docker run --rm -v ${host_working_dir}:/data pegi3s/utilities:${version_utilities} bash -c "batch_fasta_remove_stop_codons /data/${temporary_dir}/orthologs_clean/*"
+			docker run --rm \
+				-v ${host_working_dir}:/data \
+				pegi3s/utilities:${version_utilities} \
+					bash -c "batch_fasta_remove_stop_codons /data/${temporary_dir}/orthologs_clean/*"
 		</task>
 		<task id="after-remove-stop-codons" after="remove-stop-codons">
 			mkdir -p ${working_dir}/orthologs
@@ -98,7 +136,10 @@
 			then 
 				cp ${working_dir}/files_to_re_run/* ${working_dir}/fast-screen/input
 				sed -i 's/-//g' ${working_dir}/fast-screen/input/*
-				docker run --rm -v ${host_working_dir}:${host_working_dir} pegi3s/utilities:${version_utilities} backup_file ${host_working_dir}/fast-screen/files_requiring_attention
+				docker run --rm \
+					-v ${host_working_dir}:${host_working_dir} \
+					pegi3s/utilities:${version_utilities} backup_file \
+						${host_working_dir}/fast-screen/files_requiring_attention
 			else
 				# Copy only FASTA files with at least 4 sequences (the minimum required by FastScreen)
 				for file in $(ls -A ${working_dir}/orthologs); do
@@ -110,7 +151,12 @@
 			fi
 
 			mkdir -p ${working_dir}/fast-screen/logs
-			docker run --rm -v ${host_working_dir}/fast-screen/:/working_dir --rm pegi3s/pss-fs:${version_pss_fs} --logs /working_dir/logs --num-tasks ${compi_num_tasks}
+			docker run --rm \
+				-v ${host_working_dir}/fast-screen/:/working_dir \
+				pegi3s/pss-fs:${version_pss_fs} \
+					--logs /working_dir/logs \
+					--num-tasks ${compi_num_tasks}
+
 			rm -r ${working_dir}/fast-screen/input
 
 			#
@@ -168,7 +214,15 @@
 				sed -i "s/__/_/g" *
 			done
 
-			docker run --rm -v /tmp:/tmp -v /var/run/docker.sock:/var/run/docker.sock -v ${host_working_dir}/${temporary_dir}/orthologs_ref_species/input_global:/input -v ${host_working_dir}/${temporary_dir}/orthologs_ref_species/orthologs:/output pegi3s/two-way-blast:${version_two_way_blast} --num-tasks ${compi_num_tasks} -- --reference_file ${reference_file} --blast_type ${blast_type}
+			docker run --rm \
+				-v /tmp:/tmp \
+				-v /var/run/docker.sock:/var/run/docker.sock \
+				-v ${host_working_dir}/${temporary_dir}/orthologs_ref_species/input_global:/input \
+				-v ${host_working_dir}/${temporary_dir}/orthologs_ref_species/orthologs:/output \
+				pegi3s/two-way-blast:${version_two_way_blast} \
+					--num-tasks ${compi_num_tasks} -- \
+					--reference_file ${reference_file} \
+					--blast_type ${blast_type}
 		]]></task>
 		<task id="get-orthologs-reference-species-results" after="fast-screen,orthologs-reference-species"
 			params="global_reference_file"
