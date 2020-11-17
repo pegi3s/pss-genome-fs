@@ -114,7 +114,7 @@ docker run --rm -v /tmp:/tmp -v /var/run/docker.sock:/var/run/docker.sock -v ${W
 
 ## Running times
 
-- ≈ 158 minutes - 16 parallel tasks - Ubuntu 18.04.3 LTS, 6 cores (AMD Ryzen 5 2600 @ 3.40GHz),16GB of RAM and SSD disk. 
+- ≈ 158 minutes - 16 parallel tasks - Ubuntu 18.04.3 LTS, 6 cores (AMD Ryzen 5 2600 @ 3.40GHz), 16GB of RAM and SSD disk. 
 - ≈ 760 minutes - 10 parallel tasks - Ubuntu 16.04.3 LTS, 4 cores (Intel(R) Core(TM) i5-5200U CPU @ 2.20GHz), 16GB of RAM and SSD disk.
 
 # For Developers
@@ -124,4 +124,5 @@ docker run --rm -v /tmp:/tmp -v /var/run/docker.sock:/var/run/docker.sock -v ${W
 To build the Docker image, [`compi-dk`](https://www.sing-group.org/compi/#downloads) is required. Once you have it installed, simply run `compi-dk build` from the project directory to build the Docker image. The image will be created with the name specified in the `compi.project` file (i.e. `pegi3s/pss-genome-fs:latest`). This file also specifies the version of compi that goes into the Docker image.
 
 # References
-1. H. López-Fernández; P. Duque; N. Vázquez; F. Fdez-Riverola; M. Reboiro-Jato; C.P. Vieira; J. Vieira (2019) [Inferring Positive Selection in Large Viral Datasets](https://doi.org/10.1007/978-3-030-23873-5_8). 13th International Conference on Practical Applications of Computational Biology & Bioinformatics: PACBB 2019. Ávila, Spain. 26 - June
+1. H. López-Fernández; C.P. Vieira; F. Fdez-Riverola; M. Reboiro-Jato; J. Vieira (2020) [Inferences on Mycobacterium leprae host immune response escape and antibiotic resistance using genomic data and GenomeFastScreen](https://doi.org/10.1007/978-3-030-54568-0_5). 14th International Conference on Practical Applications of Computational Biology & Bioinformatics: PACBB 2020. L'Aquila, Italy. 7 - October
+2. H. López-Fernández; P. Duque; N. Vázquez; F. Fdez-Riverola; M. Reboiro-Jato; C.P. Vieira; J. Vieira (2019) [Inferring Positive Selection in Large Viral Datasets](https://doi.org/10.1007/978-3-030-23873-5_8). 13th International Conference on Practical Applications of Computational Biology & Bioinformatics: PACBB 2019. Ávila, Spain. 26 - June
