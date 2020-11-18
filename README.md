@@ -114,8 +114,8 @@ docker run --rm -v /tmp:/tmp -v /var/run/docker.sock:/var/run/docker.sock -v ${W
 
 ## Running times
 
-- ≈ 158 minutes - 16 parallel tasks - Ubuntu 18.04.3 LTS, 6 cores (AMD Ryzen 5 2600 @ 3.40GHz), 16GB of RAM and SSD disk. 
-- ≈ 760 minutes - 10 parallel tasks - Ubuntu 16.04.3 LTS, 4 cores (Intel(R) Core(TM) i5-5200U CPU @ 2.20GHz), 16GB of RAM and SSD disk.
+- ≈ 158 minutes - 16 parallel tasks - Ubuntu 18.04.3 LTS, 12 CPUs (AMD Ryzen 5 2600 @ 3.40GHz), 16GB of RAM and SSD disk.
+- ≈ 760 minutes - 10 parallel tasks - Ubuntu 16.04.3 LTS, 8 CPUs (Intel(R) Core(TM) i5-5200U CPU @ 2.20GHz), 16GB of RAM and SSD disk.
 
 # For Developers
 
