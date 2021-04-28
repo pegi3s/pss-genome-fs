@@ -8,6 +8,7 @@ Download, uncompress it and move to the `pss-genome-fs` directory, where you wil
 
 ## Compatible versions
 
+- 1.12.0
 - 1.11.0
 - 1.10.0
 - 1.9.0

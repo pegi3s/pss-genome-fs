@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.12.0] - 2021-04-28
+
+### Changed
+
+- Update Compi version to 1.4.0.
+- Update pegi3s/pss-fs version to 1.10.0.
+- Update pegi3s/two-way-blast version to 1.1.2.
+
+## [1.11.0] - 2020-12-21
+
+### Changed
+
+- Update pegi3s/pss-fs version to 1.9.0.
+
+## [1.10.0] - 2020-12-10
+
+### Changed
+
+- Update pegi3s/pss-fs version to 1.8.0.
+
+## [1.9.0] - 2020-12-7
+
+### Changed
+
+- Update pegi3s/pss-fs version to 1.7.1.
+
 ## [1.8.0] - 2020-11-14
 
 ### Changed
