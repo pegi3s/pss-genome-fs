@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.14.0] - 2022-09-02
+
+### Changed
+
+- Update pegi3s/pss-fs version to 1.12.0.
+
 ## [1.13.0] - 2021-05-10
 
 ### Changed
